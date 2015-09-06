@@ -12,4 +12,5 @@
     <string name="connecting">ToyVPN is connecting...</string>
     <string name="connected">ToyVPN is connected!</string>
     <string name="disconnected">ToyVPN is disconnected!</string>
+    <string name="title_activity_demo_main">DemoMainActivity</string>
 </resources>
