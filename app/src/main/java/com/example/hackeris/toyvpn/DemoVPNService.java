@@ -63,15 +63,13 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
             FileOutputStream out = new FileOutputStream(mInterface.getFileDescriptor());
 
             // Allocate the buffer for a single packet.
-            ByteBuffer packet = ByteBuffer.allocate(32767);
+            byte[] packet = new byte[32767];
 
             while (true) {
 
-                int length = in.read(packet.array());
+                int length = in.read(packet);
                 if (length > 0) {
-                    packet.limit(length);
-                    Log.d(TAG, new String(packet.array(), "UTF-8"));
-                    packet.clear();
+                    Log.i(TAG, "\n" + byteArrayToHexString(packet));
                 }
             }
 
@@ -80,6 +78,25 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         } finally {
             mHandler.sendEmptyMessage(R.string.disconnected);
         }
+    }
+
+    private String byteArrayToHexString(byte[] src) {
+
+        StringBuilder stringBuilder = new StringBuilder("");
+        if (src == null || src.length <= 0) {
+            return null;
+        }
+        for (byte aSrc : src) {
+            int v = aSrc & 0xFF;
+            String hv = Integer.toHexString(v);
+            stringBuilder.append(' ');
+            if (hv.length() < 2) {
+                stringBuilder.append('0');
+            }
+            stringBuilder.append(hv);
+        }
+        return stringBuilder.toString();
+
     }
 
     @Override
