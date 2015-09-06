@@ -11,7 +11,6 @@ import android.widget.Toast;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * Created by hackeris on 15/9/6.
@@ -52,6 +51,8 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
     @Override
     public void run() {
 
+        mHandler.sendEmptyMessage(R.string.connecting);
+
         try {
             VpnService.Builder builder = new VpnService.Builder();
             builder.addAddress("10.0.8.1", 32).addRoute("0.0.0.0", 0).setSession("Firewall").addDnsServer("8.8.8.8")
@@ -62,14 +63,18 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
             FileInputStream in = new FileInputStream(mInterface.getFileDescriptor());
             FileOutputStream out = new FileOutputStream(mInterface.getFileDescriptor());
 
+            mHandler.sendEmptyMessage(R.string.connected);
+
             // Allocate the buffer for a single packet.
             byte[] packet = new byte[32767];
-
             while (true) {
 
                 int length = in.read(packet);
                 if (length > 0) {
-                    Log.i(TAG, "\n" + byteArrayToHexString(packet));
+                    Log.i(TAG, "\n" + byteArrayToHexString(packet, length));
+                    String sourceAddress = longToAddressString(byteToLong(packet, 12));
+                    String destAddress = longToAddressString(byteToLong(packet, 16));
+                    Log.i(TAG, "from " + sourceAddress + " to " + destAddress);
                 }
             }
 
@@ -80,14 +85,14 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         }
     }
 
-    private String byteArrayToHexString(byte[] src) {
+    private String byteArrayToHexString(byte[] src, int length) {
 
         StringBuilder stringBuilder = new StringBuilder("");
         if (src == null || src.length <= 0) {
             return null;
         }
-        for (byte aSrc : src) {
-            int v = aSrc & 0xFF;
+        for (int i = 0; i < length; i++) {
+            int v = src[i] & 0xFF;
             String hv = Integer.toHexString(v);
             stringBuilder.append(' ');
             if (hv.length() < 2) {
@@ -96,7 +101,29 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
             stringBuilder.append(hv);
         }
         return stringBuilder.toString();
+    }
 
+    private long byteToLong(byte[] bytes, int start) {
+
+        return (bytes[start + 3] & 0xff) | ((bytes[start + 2] & 0xff) << 8) |
+                ((bytes[start + 1] & 0xff) << 16) |
+                ((bytes[start] & 0xff) << 24);
+    }
+
+    private String longToAddressString(final long ip) {
+        final long[] mask = {0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000};
+        final StringBuilder ipAddress = new StringBuilder();
+        for (long i = 0; i < mask.length; i++) {
+            long part = (ip & mask[(int) i]) >> (i * 8);
+            if (part < 0) {
+                part = 256 + part;
+            }
+            ipAddress.insert(0, part);
+            if (i < mask.length - 1) {
+                ipAddress.insert(0, ".");
+            }
+        }
+        return ipAddress.toString();
     }
 
     @Override
