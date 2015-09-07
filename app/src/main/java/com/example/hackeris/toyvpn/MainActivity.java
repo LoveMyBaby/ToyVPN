@@ -1,15 +1,35 @@
 package com.example.hackeris.toyvpn;
 
 import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.net.VpnService;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 
+import java.io.IOException;
+
 public class MainActivity extends Activity implements View.OnClickListener {
+
+    private DemoVPNService mVPNService;
+
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            mVPNService = ((DemoVPNService.VPNServiceBinder) service).getService();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -18,6 +38,8 @@ public class MainActivity extends Activity implements View.OnClickListener {
 
         Button mConnect = (Button) findViewById(R.id.btn_connect);
         mConnect.setOnClickListener(this);
+        Button mDisconnect = (Button) findViewById(R.id.btn_disconnect);
+        mDisconnect.setOnClickListener(this);
     }
 
     @Override
@@ -52,6 +74,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
             } else {
                 onActivityResult(0, RESULT_OK, null);
             }
+        } else if (id == R.id.btn_disconnect) {
+            mVPNService.stopVPNService();
+            Intent intent = new Intent(this, DemoVPNService.class);
+            stopService(intent);
         }
     }
 
@@ -61,6 +87,7 @@ public class MainActivity extends Activity implements View.OnClickListener {
         if (result == RESULT_OK) {
             Intent intent = new Intent(this, DemoVPNService.class);
             startService(intent);
+            bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
         }
     }
 }
