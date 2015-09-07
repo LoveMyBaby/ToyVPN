@@ -13,6 +13,7 @@ import android.widget.Toast;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * Created by hackeris on 15/9/6.
@@ -105,15 +106,12 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
             mHandler.sendEmptyMessage(R.string.connected);
 
             // Allocate the buffer for a single packet.
-            byte[] packet = new byte[32767];
+            ByteBuffer packet = ByteBuffer.allocate(32767);
             while (true) {
 
-                int length = mInputStream.read(packet);
+                int length = mInputStream.read(packet.array());
                 if (length > 0) {
-                    Log.i(TAG, "\n" + byteArrayToHexString(packet, length));
-                    String sourceAddress = longToAddressString(byteToLong(packet, 12));
-                    String destAddress = longToAddressString(byteToLong(packet, 16));
-                    Log.i(TAG, "from " + sourceAddress + " to " + destAddress);
+                    NetworkUtils.logIPPack(TAG, packet, length);
                 }
             }
 
@@ -122,47 +120,6 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         } finally {
             mHandler.sendEmptyMessage(R.string.disconnected);
         }
-    }
-
-    private String byteArrayToHexString(byte[] src, int length) {
-
-        StringBuilder stringBuilder = new StringBuilder("");
-        if (src == null || src.length <= 0) {
-            return null;
-        }
-        for (int i = 0; i < length; i++) {
-            int v = src[i] & 0xFF;
-            String hv = Integer.toHexString(v);
-            stringBuilder.append(' ');
-            if (hv.length() < 2) {
-                stringBuilder.append('0');
-            }
-            stringBuilder.append(hv);
-        }
-        return stringBuilder.toString();
-    }
-
-    public static long byteToLong(byte[] bytes, int start) {
-
-        return (bytes[start + 3] & 0xff) | ((bytes[start + 2] & 0xff) << 8) |
-                ((bytes[start + 1] & 0xff) << 16) |
-                ((bytes[start] & 0xff) << 24);
-    }
-
-    public static String longToAddressString(final long ip) {
-        final long[] mask = {0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000};
-        final StringBuilder ipAddress = new StringBuilder();
-        for (long i = 0; i < mask.length; i++) {
-            long part = (ip & mask[(int) i]) >> (i * 8);
-            if (part < 0) {
-                part = 256 + part;
-            }
-            ipAddress.insert(0, part);
-            if (i < mask.length - 1) {
-                ipAddress.insert(0, ".");
-            }
-        }
-        return ipAddress.toString();
     }
 
     @Override
