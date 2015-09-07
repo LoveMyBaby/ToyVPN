@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ToyVPN</string>
+    <string name="app_name">DemoVPN</string>
 
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
@@ -9,7 +9,7 @@
     <string name="secret">Shared Secret:</string>
     <string name="connect">Connect!</string>
 
-    <string name="connecting">ToyVPN is connecting...</string>
+    <string name="connecting">ToyVPN is connecting…</string>
     <string name="connected">ToyVPN is connected!</string>
     <string name="disconnected">ToyVPN is disconnected!</string>
     <string name="title_activity_demo_main">DemoMainActivity</string>

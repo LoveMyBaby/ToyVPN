@@ -55,7 +55,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
 
         try {
             VpnService.Builder builder = new VpnService.Builder();
-            builder.addAddress("10.0.8.1", 32).addRoute("0.0.0.0", 0).setSession("Firewall").addDnsServer("8.8.8.8")
+            builder.addAddress("10.0.0.2", 32).addRoute("0.0.0.0", 0).setSession("DemoVPN").addDnsServer("8.8.8.8")
                     .setMtu(1500);
 
             ParcelFileDescriptor mInterface = builder.establish();
@@ -103,14 +103,14 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         return stringBuilder.toString();
     }
 
-    private long byteToLong(byte[] bytes, int start) {
+    public static long byteToLong(byte[] bytes, int start) {
 
         return (bytes[start + 3] & 0xff) | ((bytes[start + 2] & 0xff) << 8) |
                 ((bytes[start + 1] & 0xff) << 16) |
                 ((bytes[start] & 0xff) << 24);
     }
 
-    private String longToAddressString(final long ip) {
+    public static String longToAddressString(final long ip) {
         final long[] mask = {0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000};
         final StringBuilder ipAddress = new StringBuilder();
         for (long i = 0; i < mask.length; i++) {
