@@ -13,7 +13,9 @@ import android.widget.Toast;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
 /**
  * Created by hackeris on 15/9/6.
@@ -31,6 +33,10 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
     private FileInputStream mInputStream;
 
     private FileOutputStream mOutputStream;
+
+    private SocketChannel mTunnel;
+
+    private static final int PACK_SIZE = 32767 * 2;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -78,6 +84,9 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
             if (mOutputStream != null) {
                 mOutputStream.close();
             }
+            if (mTunnel != null) {
+                mTunnel.close();
+            }
         } catch (IOException ie) {
             ie.printStackTrace();
         }
@@ -85,39 +94,98 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         mInterface = null;
         mInputStream = null;
         mOutputStream = null;
+        mTunnel = null;
     }
 
+    private void configure() throws IOException {
+
+        VpnService.Builder builder = new VpnService.Builder();
+        builder.addAddress("10.0.0.2", 32).addRoute("0.0.0.0", 0).setSession("DemoVPN").addDnsServer("8.8.8.8")
+                .setMtu(1500);
+
+        mInterface = builder.establish();
+
+        mInputStream = new FileInputStream(mInterface.getFileDescriptor());
+        mOutputStream = new FileOutputStream(mInterface.getFileDescriptor());
+
+        mTunnel = SocketChannel.open();
+        // Protect the mTunnel before connecting to avoid loopback.
+        if (!protect(mTunnel.socket())) {
+            throw new IllegalStateException("Cannot protect the mTunnel");
+        }
+        mTunnel.connect(new InetSocketAddress("192.168.1.109", 8000));
+        mTunnel.configureBlocking(false);
+    }
+
+
     @SuppressWarnings("InfiniteLoopStatement")
+    private void dataTransferLoop() throws IOException {
+
+        // Allocate the buffer for a single packet.
+        ByteBuffer packet = ByteBuffer.allocate(PACK_SIZE);
+
+        Thread recvThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // Allocate the buffer for a single packet.
+                    ByteBuffer packet = ByteBuffer.allocate(PACK_SIZE);
+                    while (true) {
+                        int length = mTunnel.read(packet);
+                        if (length > 0) {
+                            if (packet.get(0) != 0) {
+                                packet.limit(length);
+                                try {
+                                    mOutputStream.write(packet.array());
+                                } catch (IOException ie) {
+                                    ie.printStackTrace();
+                                    NetworkUtils.logIPPack(TAG, packet, length);
+                                }
+                                packet.clear();
+                            }
+                        }
+                    }
+                } catch (IOException ie) {
+                    ie.printStackTrace();
+                }
+            }
+        });
+        recvThread.start();
+
+        while (true) {
+
+            int length = mInputStream.read(packet.array());
+            if (length > 0) {
+
+                //NetworkUtils.logIPPack(TAG, packet, length);
+                packet.limit(length);
+                mTunnel.write(packet);
+                packet.clear();
+            }
+        }
+    }
+
     @Override
     public void run() {
 
         mHandler.sendEmptyMessage(R.string.connecting);
 
         try {
-            VpnService.Builder builder = new VpnService.Builder();
-            builder.addAddress("10.0.0.2", 32).addRoute("0.0.0.0", 0).setSession("DemoVPN").addDnsServer("8.8.8.8")
-                    .setMtu(1500);
-
-            mInterface = builder.establish();
-
-            mInputStream = new FileInputStream(mInterface.getFileDescriptor());
-            mOutputStream = new FileOutputStream(mInterface.getFileDescriptor());
+            configure();
 
             mHandler.sendEmptyMessage(R.string.connected);
 
-            // Allocate the buffer for a single packet.
-            ByteBuffer packet = ByteBuffer.allocate(32767);
-            while (true) {
-
-                int length = mInputStream.read(packet.array());
-                if (length > 0) {
-                    NetworkUtils.logIPPack(TAG, packet, length);
-                }
-            }
+            dataTransferLoop();
 
         } catch (IOException ie) {
             Log.e(TAG, ie.toString());
         } finally {
+            try {
+                mInterface.close();
+                mTunnel.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             mHandler.sendEmptyMessage(R.string.disconnected);
         }
     }
