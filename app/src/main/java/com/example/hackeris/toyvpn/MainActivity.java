@@ -11,13 +11,15 @@ import android.os.IBinder;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-
-import java.io.IOException;
+import android.widget.TextView;
 
 public class MainActivity extends Activity implements View.OnClickListener {
 
     private DemoVPNService mVPNService;
+
+    private TextView mServerAddress;
+    private TextView mServerPort;
+    private TextView mSharedSecret;
 
     private ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
@@ -36,10 +38,12 @@ public class MainActivity extends Activity implements View.OnClickListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_demo_main);
 
-        Button mConnect = (Button) findViewById(R.id.btn_connect);
-        mConnect.setOnClickListener(this);
-        Button mDisconnect = (Button) findViewById(R.id.btn_disconnect);
-        mDisconnect.setOnClickListener(this);
+        mServerAddress = (TextView) findViewById(R.id.address);
+        mServerPort = (TextView) findViewById(R.id.port);
+        mSharedSecret = (TextView) findViewById(R.id.secret);
+
+        findViewById(R.id.btn_connect).setOnClickListener(this);
+        findViewById(R.id.btn_disconnect).setOnClickListener(this);
     }
 
     @Override
@@ -85,7 +89,11 @@ public class MainActivity extends Activity implements View.OnClickListener {
     protected void onActivityResult(int request, int result, Intent data) {
 
         if (result == RESULT_OK) {
-            Intent intent = new Intent(this, DemoVPNService.class);
+            String prefix = getPackageName();
+            Intent intent = new Intent(this, DemoVPNService.class)
+                    .putExtra(prefix + ".ADDRESS", mServerAddress.getText().toString())
+                    .putExtra(prefix + ".PORT", mServerPort.getText().toString())
+                    .putExtra(prefix + ".SECRET", mSharedSecret.getText().toString());
             startService(intent);
             bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
         }

@@ -33,6 +33,8 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
 
     private ParcelFileDescriptor mInterface;
 
+    private Encrypter mEncrypter;
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // The handler is only used to show messages.
@@ -44,9 +46,16 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         if (mThread != null) {
             mThread.interrupt();
         }
-        mSharedSecret = "test".getBytes();
-        mServerAddress = "192.168.0.102";
-        mServerPort = "8000";
+
+        if (mEncrypter == null) {
+            mEncrypter = new Encrypter();
+        }
+
+        // Extract information from the intent.
+        String prefix = getPackageName();
+        mServerAddress = intent.getStringExtra(prefix + ".ADDRESS");
+        mServerPort = intent.getStringExtra(prefix + ".PORT");
+        mSharedSecret = intent.getStringExtra(prefix + ".SECRET").getBytes();
 
         // Start a new session by creating a new thread.
         mThread = new Thread(this, "ToyVpnThread");
@@ -203,6 +212,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
                 if (length > 0) {
                     // Write the outgoing packet to the tunnel.
                     packet.limit(length);
+                    mEncrypter.encrypt(packet.array(), length);
                     tunnel.write(packet);
                     packet.clear();
 
@@ -221,6 +231,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
                     // Ignore control messages, which start with zero.
                     if (packet.get(0) != 0) {
                         // Write the incoming packet to the output stream.
+                        mEncrypter.decrypt(packet.array(), length);
                         out.write(packet.array(), 0, length);
                     }
                     packet.clear();
@@ -269,6 +280,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
             Log.e(TAG, "Got " + e.toString());
         } finally {
             try {
+                assert tunnel != null;
                 tunnel.close();
             } catch (Exception e) {
                 // ignore
