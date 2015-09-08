@@ -38,6 +38,10 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
 
     private Encrypter mEncrypter;
 
+    private String mServerAddress;
+    private String mServerPort;
+    private byte[] mSharedSecret;
+
     private static final int PACK_SIZE = 32767 * 2;
 
     @Override
@@ -59,9 +63,15 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
             }
         }
 
-        if(mEncrypter == null){
+        if (mEncrypter == null) {
             mEncrypter = new Encrypter();
         }
+
+        // Extract information from the intent.
+        String prefix = getPackageName();
+        mServerAddress = intent.getStringExtra(prefix + ".ADDRESS");
+        mServerPort = intent.getStringExtra(prefix + ".PORT");
+        mSharedSecret = intent.getStringExtra(prefix + ".SECRET").getBytes();
 
         mThread = new Thread(this);
         mThread.start();
@@ -119,7 +129,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         if (!protect(mTunnel.socket())) {
             throw new IllegalStateException("Cannot protect the mTunnel");
         }
-        mTunnel.connect(new InetSocketAddress("192.168.1.109", 8000));
+        mTunnel.connect(new InetSocketAddress(mServerAddress, Integer.parseInt(mServerPort)));
         mTunnel.configureBlocking(false);
     }
 
