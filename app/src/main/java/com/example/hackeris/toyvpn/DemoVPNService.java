@@ -36,6 +36,8 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
 
     private SocketChannel mTunnel;
 
+    private Encrypter mEncrypter;
+
     private static final int PACK_SIZE = 32767 * 2;
 
     @Override
@@ -55,6 +57,10 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+
+        if(mEncrypter == null){
+            mEncrypter = new Encrypter();
         }
 
         mThread = new Thread(this);
@@ -132,6 +138,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
                     ByteBuffer packet = ByteBuffer.allocate(PACK_SIZE);
                     while (true) {
                         int length = mTunnel.read(packet);
+                        mEncrypter.decrypt(packet.array(), length);
                         if (length > 0) {
                             if (packet.get(0) != 0) {
                                 packet.limit(length);
@@ -159,6 +166,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
 
                 //NetworkUtils.logIPPack(TAG, packet, length);
                 packet.limit(length);
+                mEncrypter.encrypt(packet.array(), length);
                 mTunnel.write(packet);
                 packet.clear();
             }
