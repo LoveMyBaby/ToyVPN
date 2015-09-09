@@ -36,7 +36,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
 
     private SocketChannel mTunnel;
 
-    private Encrypter mEncrypter;
+    private Encryptor mEncrypter;
 
     private String mServerAddress;
     private String mServerPort;
@@ -64,7 +64,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         }
 
         if (mEncrypter == null) {
-            mEncrypter = new Encrypter();
+            mEncrypter = new Encryptor();
         }
 
         // Extract information from the intent.
