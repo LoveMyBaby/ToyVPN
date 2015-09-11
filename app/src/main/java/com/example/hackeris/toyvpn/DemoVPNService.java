@@ -115,6 +115,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
 
     private void configure() throws IOException {
 
+        //  使用VPN Builder创建一个VPN接口
         VpnService.Builder builder = new VpnService.Builder();
         builder.addAddress("10.0.0.2", 32).addRoute("0.0.0.0", 0).setSession("DemoVPN").addDnsServer("8.8.8.8")
                 .setMtu(1500);
@@ -124,6 +125,7 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         mInputStream = new FileInputStream(mInterface.getFileDescriptor());
         mOutputStream = new FileOutputStream(mInterface.getFileDescriptor());
 
+        //  建立一个到代理服务器的网络链接，用于数据传送
         mTunnel = SocketChannel.open();
         // Protect the mTunnel before connecting to avoid loopback.
         if (!protect(mTunnel.socket())) {
@@ -140,6 +142,8 @@ public class DemoVPNService extends VpnService implements Handler.Callback, Runn
         // Allocate the buffer for a single packet.
         ByteBuffer packet = ByteBuffer.allocate(PACK_SIZE);
 
+
+        //  一个线程用于接收代理传回的数据，一个线程用于发送手机发出的数据到代理服务器
         Thread recvThread = new Thread(new Runnable() {
             @Override
             public void run() {
